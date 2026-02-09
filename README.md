@@ -1,6 +1,5 @@
 # Azure SQL + AKS Unified Deployment
 
-[![High Availability](https://img.shields.io/badge/HA%20Score-96%2F100-brightgreen)](DEPLOYMENT_GUIDE.md)
 [![Terraform](https://img.shields.io/badge/Terraform-1.5%2B-purple?logo=terraform)](https://www.terraform.io/)
 [![Azure](https://img.shields.io/badge/Azure-Cloud-blue?logo=microsoft-azure)](https://azure.microsoft.com/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-1.27%2B-blue?logo=kubernetes)](https://kubernetes.io/)
