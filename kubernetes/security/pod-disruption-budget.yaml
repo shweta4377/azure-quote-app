@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: quote-app-pdb
+  namespace: default
+  labels:
+    app: quote-app
+spec:
+  minAvailable: 2  # At least 2 pods must always be available (out of 3+)
+  # Alternative: maxUnavailable: 1  # At most 1 pod can be unavailable at a time
+  selector:
+    matchLabels:
+      app: quote-app

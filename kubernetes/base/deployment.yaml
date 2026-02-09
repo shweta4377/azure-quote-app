@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quote-app
+  namespace: default
+  labels:
+    app: quote-app
+    version: v1
+spec:
+  replicas: 3  # Start with 3 pods for high availability across zones
+  selector:
+    matchLabels:
+      app: quote-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Allow 1 extra pod during update
+      maxUnavailable: 0  # Keep all pods running during update (zero downtime)
+  template:
+    metadata:
+      labels:
+        app: quote-app
+        version: v1
+    spec:
+      # Pod anti-affinity for HA - spread pods across nodes and zones
+      affinity:
+        podAntiAffinity:
+          # Preferred: try to spread across zones (soft requirement)
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - quote-app
+              topologyKey: topology.kubernetes.io/zone
+          # Required: never schedule 2 pods on the same node (hard requirement)
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - quote-app
+            topologyKey: kubernetes.io/hostname
+
+      containers:
+      - name: quote-app
+        image: acrquoteapplearningvi6azqyl.azurecr.io/quote-app:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: SQL_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: quote-app-secret
+              key: sql-connection-string
+
+        # Resource limits (important for cost control and stability)
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"      # 0.25 CPU cores
+          limits:
+            memory: "512Mi"
+            cpu: "500m"      # 0.5 CPU cores
+
+        # Liveness probe - restart if unhealthy
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30  # Wait 30s after startup
+          periodSeconds: 10        # Check every 10s
+          timeoutSeconds: 5        # Timeout after 5s
+          failureThreshold: 3      # Restart after 3 failures
+
+        # Readiness probe - remove from service if not ready
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10  # Check after 10s
+          periodSeconds: 5         # Check every 5s
+          timeoutSeconds: 3        # Timeout after 3s
+          failureThreshold: 2      # Mark unready after 2 failures
+
+        # Security context (run as non-root)
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: false  # Allow writes to /tmp
+
+      # Restart policy
+      restartPolicy: Always
+
+      # Graceful shutdown
+      terminationGracePeriodSeconds: 30

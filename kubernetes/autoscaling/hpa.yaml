@@ -1,0 +1,48 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: quote-app-hpa
+  namespace: default
+  labels:
+    app: quote-app
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: quote-app
+  minReplicas: 3  # Start with 3 for HA across zones
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # Scale when average CPU > 70%
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80  # Scale when average memory > 80%
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 minutes before scaling down
+      policies:
+      - type: Percent
+        value: 50  # Scale down max 50% of current pods
+        periodSeconds: 60
+      - type: Pods
+        value: 1  # Or scale down 1 pod at a time
+        periodSeconds: 60
+      selectPolicy: Min  # Use the slower policy for scale down (safer)
+    scaleUp:
+      stabilizationWindowSeconds: 0  # Scale up immediately when needed
+      policies:
+      - type: Percent
+        value: 100  # Can double the number of pods
+        periodSeconds: 15
+      - type: Pods
+        value: 4  # Or add up to 4 pods at once
+        periodSeconds: 15
+      selectPolicy: Max  # Use the faster policy for scale up (responsive)
